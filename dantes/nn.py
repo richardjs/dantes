@@ -7,6 +7,7 @@ import torch
 
 from .data import HARD_DEALS, EASY_DEALS
 from .deal import microsoft
+from .nn_visualize import print_linear_significant_card
 
 hardc = len(HARD_DEALS)
 easyc = len(EASY_DEALS)
@@ -24,7 +25,7 @@ def cardi(card):
     return rank + 13 * suit
 
 
-t_indep = torch.zeros((hardc + easyc), 52 * 52, dtype=torch.bool)
+t_indep = torch.zeros((hardc + easyc), 52 * 52)
 i = 0
 for seed in HARD_DEALS + EASY_DEALS:
     deal = microsoft(seed)
@@ -53,7 +54,7 @@ def init_coeffs():
     return (torch.rand(n_coeff) - 0.5).requires_grad_()
 
 def calc_preds(coeffs, indeps):
-    return torch.sigmoid((indeps * coeffs).sum(axis=1))
+    return torch.sigmoid(indeps@coeffs)
 
 def calc_loss(coeffs, indeps, deps):
     return torch.abs(calc_preds(coeffs, indeps) - deps).mean()
@@ -73,11 +74,13 @@ def train_model(epochs=30, lr=0.1):
     coeffs = torch.rand(n_coeff) - 0.5
     coeffs.requires_grad_()
 
-    for _ in range(epochs):
+    for i in range(epochs):
+        print(i, end=":\t")
         one_epoch(coeffs, lr=lr)
         torch.save(coeffs, "coeffs.pt")
         print(f"{acc(coeffs):.3f}")
 
     return coeffs
 
-coeffs = train_model(epochs=10000)
+coeffs = train_model(epochs=1000)
+print_linear_significant_card(coeffs)
